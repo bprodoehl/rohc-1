@@ -99,7 +99,6 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
-	const ip_context_t *ip_inner_context = NULL;
 	struct rohc_tcp_extr_ip_bits *ip_inner_bits = NULL;
 	size_t ip_contexts_nr;
 	int ret;
@@ -141,10 +140,9 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 		remain_len -= ret;
 		(*parsed_len) += ret;
 
-		ip_inner_context = ip_context;
 		ip_inner_bits = ip_bits;
 	}
-	assert(ip_inner_context != NULL);
+	assert(ip_context != NULL);
 
 	/* parse irregular TCP part */
 	ret = tcp_parse_irregular_tcp(context, remain_data, remain_len,

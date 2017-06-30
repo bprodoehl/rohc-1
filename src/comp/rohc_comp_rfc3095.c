@@ -5166,14 +5166,13 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	nr_ip_id_bits = rfc3095_ctxt->tmp.nr_ip_id_bits;
 	nr_ip_id_bits2 = rfc3095_ctxt->tmp.nr_ip_id_bits2;
-	is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	assert(packet_type == ROHC_PACKET_UO_1_ID ||
 	       packet_type == ROHC_PACKET_UOR_2_RTP ||
 	       packet_type == ROHC_PACKET_UOR_2_TS ||
 	       packet_type == ROHC_PACKET_UOR_2_ID);
-	assert(is_rtp);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 	ts_send = rtp_context->tmp.ts_send;
@@ -5467,7 +5466,6 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	size_t nr_ip_id_bits2;
 	ip_header_pos_t innermost_ipv4_non_rnd;
 	rohc_packet_t packet_type;
-	bool is_rtp;
 
 	uint8_t flags;
 	uint8_t S;
@@ -5486,11 +5484,10 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	nr_ip_id_bits = rfc3095_ctxt->tmp.nr_ip_id_bits;
 	nr_ip_id_bits2 = rfc3095_ctxt->tmp.nr_ip_id_bits2;
-	is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	assert(packet_type == ROHC_PACKET_UOR_2);
-	assert(!is_rtp);
+	assert(!(context->profile->id == ROHC_PROFILE_RTP));
 
 	/* determine the innermost IPv4 header with non-random IP-ID, but also the
 	 * values of the I and I2 flags for additional non-random IP-ID bits */
