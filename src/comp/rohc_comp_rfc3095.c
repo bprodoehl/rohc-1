@@ -5139,7 +5139,6 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	size_t nr_ip_id_bits2;
 	ip_header_pos_t innermost_ipv4_non_rnd;
 	rohc_packet_t packet_type;
-	bool is_rtp;
 
 	uint8_t flags;
 	int S;
