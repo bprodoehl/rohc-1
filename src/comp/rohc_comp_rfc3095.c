@@ -913,7 +913,6 @@ bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
                                 const size_t feedback_data_len)
 {
 	const uint8_t *remain_data = feedback_data;
-	size_t remain_len = feedback_data_len;
 
 	if(feedback_type == ROHC_FEEDBACK_1)
 	{
@@ -922,7 +921,7 @@ bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
 		size_t sn_bits_nr;
 
 		rohc_comp_debug(context, "FEEDBACK-1 received");
-		assert(remain_len == 1);
+		assert(feedback_data_len == 1);
 
 		/* get the 8 LSB bits of the acknowledged SN */
 		sn_bits = remain_data[0] & 0xff;
@@ -1667,7 +1666,6 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const size_t nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	uint8_t type;
 	size_t counter;
 	size_t first_position;
@@ -1679,11 +1677,11 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	        rfc3095_ctxt->tmp.nr_ip_id_bits <= 16) ||
 	       (ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits == 0));
-	assert((nr_of_ip_hdr == 1 && rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0) ||
-	       (nr_of_ip_hdr == 2 &&
+	assert((uncomp_pkt->ip_hdr_nr == 1 && rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0) ||
+	       (uncomp_pkt->ip_hdr_nr == 2 &&
 	        ip_get_version(&uncomp_pkt->inner_ip) == IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits2 <= 16) ||
-	       (nr_of_ip_hdr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
+	       (uncomp_pkt->ip_hdr_nr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0));
 
 	rohc_comp_debug(context, "code IR packet (CID = %zu)", context->cid);
