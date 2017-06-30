@@ -55,6 +55,7 @@
 #  include <string.h>
 #endif
 #include <stdarg.h>
+#include <limits.h>
 #include <assert.h>
 
 
