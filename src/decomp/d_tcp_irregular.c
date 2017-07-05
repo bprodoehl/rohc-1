@@ -142,7 +142,6 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 
 		ip_inner_bits = ip_bits;
 	}
-	assert(ip_context != NULL);
 
 	/* parse irregular TCP part */
 	ret = tcp_parse_irregular_tcp(context, remain_data, remain_len,
