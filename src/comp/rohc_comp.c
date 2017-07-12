@@ -69,6 +69,7 @@
 #endif
 #include <assert.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 
 extern const struct rohc_comp_profile c_rtp_profile,
@@ -770,6 +771,15 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	c->total_last_compressed_size = rohc_packet->len;
 	c->header_last_uncompressed_size = payload_offset;
 	c->header_last_compressed_size = rohc_hdr_size;
+    
+    if(c->used == 0)
+    {
+        printf("ROHC destroying context\n");
+        c->profile->destroy(c);
+        c->used = 0;
+        assert(comp->num_contexts_used > 0);
+        comp->num_contexts_used--;
+    }
 
 	/* compression is successful */
 	return status;
@@ -3094,4 +3104,3 @@ static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const con
 error:
 	return false;
 }
-

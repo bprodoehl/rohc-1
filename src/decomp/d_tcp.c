@@ -53,6 +53,7 @@
 #  include <string.h>
 #endif
 #include <stdint.h>
+#include <stdio.h>
 
 
 /*
@@ -372,6 +373,7 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 
 	/* allocate memory for the context */
 	*persist_ctxt = malloc(sizeof(struct d_tcp_context));
+    printf("ROHC decompress create tcp context: %ld bytes\n", sizeof(struct d_tcp_context));
 	if((*persist_ctxt) == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -4328,6 +4330,11 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			       sizeof(struct d_tcp_opt_sack));
 		}
 	}
+    
+    if((decoded->rsf_flags & 0x5) != 0) {
+        printf("ROHC setting decomp state to ROHC_DECOMP_STATE_FIN\n");
+        context->state = ROHC_DECOMP_STATE_FIN;
+    }
 }
 
 
@@ -4367,4 +4374,3 @@ const struct rohc_decomp_profile d_tcp_profile =
 	.attempt_repair  = (rohc_decomp_attempt_repair_t) d_tcp_attempt_repair,
 	.get_sn          = d_tcp_get_msn
 };
-

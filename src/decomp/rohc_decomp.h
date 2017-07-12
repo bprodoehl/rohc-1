@@ -81,6 +81,8 @@ typedef enum
 	ROHC_DECOMP_STATE_SC = 2,
 	/** The Full Context state */
 	ROHC_DECOMP_STATE_FC = 3,
+    /** The Finished state */
+    ROHC_DECOMP_STATE_FIN = 4,
 } rohc_decomp_state_t;
 
 
@@ -435,4 +437,3 @@ bool ROHC_EXPORT rohc_decomp_set_traces_cb2(struct rohc_decomp *const decomp,
 #endif
 
 #endif /* ROHC_DECOMP_H */
-

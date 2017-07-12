@@ -57,6 +57,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <assert.h>
+#include <stdio.h>
 
 
 extern const struct rohc_decomp_profile d_uncomp_profile,
@@ -925,6 +926,14 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			goto error;
 		}
 	}
+    
+    if(stream.context != NULL && stream.context->state == ROHC_DECOMP_STATE_FIN) {
+        printf("ROHC removing finished decomp context\n");
+        context_free(stream.context);
+        stream.context = NULL;
+        decomp->last_context = NULL;
+        decomp->contexts[stream.cid] = NULL;
+    }
 
 error:
 	return status;
@@ -4188,4 +4197,3 @@ static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
 
 	return carry_crc_7_or_8;
 }
-

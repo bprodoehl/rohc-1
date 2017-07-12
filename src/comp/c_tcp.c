@@ -46,6 +46,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #ifdef __KERNEL__
 #  include <endian.h>
 #else
@@ -820,6 +821,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 	/* create the TCP part of the profile context */
 	tcp_context = malloc(sizeof(struct sc_tcp_context));
+    printf("ROHC compress create tcp context: %ld bytes\n", sizeof(struct sc_tcp_context));
 	if(tcp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -1792,6 +1794,11 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                "times since the scaling factor or residue changed",
 		                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
 	}
+    
+    if((tcp->rsf_flags & 0x5) != 0) {
+        printf("ROHC: TCP RST or FIN flag set 0x%x, setting context to not used\n", tcp->rsf_flags);
+        context->used = 0;
+    }
 
 	return counter;
 
@@ -5889,6 +5896,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 	if(tcp->rsf_flags != 0)
 	{
 		rohc_comp_debug(context, "RSF flags is set in current packet");
+        printf("ROHC: TCP RSF flags set 0x%x\n", tcp->rsf_flags);
 	}
 
 	/* how many bits are required to encode the new TCP window? */
@@ -7281,4 +7289,3 @@ const struct rohc_comp_profile c_tcp_profile =
 	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = c_tcp_feedback,
 };
-
