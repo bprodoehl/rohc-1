@@ -50,7 +50,6 @@
 
 #include "config.h"
 
-
 /*
  * Definitions of private constants and macros
  */
@@ -473,7 +472,8 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	else
 	{
 		/* init the compression context for IPv6 extension header list */
-		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
+        header_info->info.v6.ext_comp = malloc(sizeof(struct list_comp));
+		rohc_comp_list_ipv6_new(header_info->info.v6.ext_comp, list_trans_nr,
 		                        trace_cb, trace_cb_priv, profile_id);
 	}
 
@@ -499,7 +499,11 @@ static void ip_header_info_free(struct ip_header_info *const header_info)
 	else
 	{
 		/* IPv6: destroy the list of IPv6 extension headers */
-		rohc_comp_list_ipv6_free(&header_info->info.v6.ext_comp);
+        if(header_info->info.v6.ext_comp) {
+            rohc_comp_list_ipv6_free(header_info->info.v6.ext_comp);
+            free(header_info->info.v6.ext_comp);
+            header_info->info.v6.ext_comp = NULL;
+        }
 	}
 }
 
@@ -2440,7 +2444,7 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 		if(do_send_ipv6_ext)
 		{
 			rohc_comp_debug(context, "extension header list: send some bits");
-			counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest, counter);
+			counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter);
 			if(counter < 0)
 			{
 				rohc_comp_warn(context, "failed to encode list");
@@ -6083,7 +6087,7 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
 		/* replace Next Header by the one of the last extension header */
 		ip_flags->info.v6.old_ip.nh = ip_get_protocol(ip);
 		/* update compression list context */
-		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
+		rohc_list_update_context(ip_flags->info.v6.ext_comp);
 	}
 }
 
@@ -6458,7 +6462,7 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		bool list_struct_changed;
 		bool list_content_changed;
 
-		if(!detect_ipv6_ext_changes(&header_info->info.v6.ext_comp, ip,
+		if(!detect_ipv6_ext_changes(header_info->info.v6.ext_comp, ip,
 		                            &list_struct_changed, &list_content_changed))
 		{
 			goto error;
@@ -7440,4 +7444,3 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 		}
 	}
 }
-

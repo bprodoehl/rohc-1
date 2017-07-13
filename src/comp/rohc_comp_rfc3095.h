@@ -103,7 +103,7 @@ struct ipv6_header_info
 	/// The previous IPv6 header
 	struct ipv6_hdr old_ip;
 	/// The extension compressor
-	struct list_comp ext_comp;
+	struct list_comp *ext_comp;
 };
 
 
@@ -466,4 +466,3 @@ static inline size_t get_nr_ipv4_non_rnd_with_bits(const struct rohc_comp_rfc309
 
 
 #endif
-
