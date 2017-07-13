@@ -499,7 +499,8 @@ static void ip_header_info_free(struct ip_header_info *const header_info)
 	else
 	{
 		/* IPv6: destroy the list of IPv6 extension headers */
-		if(header_info->info.v6.ext_comp) {
+		if(header_info->info.v6.ext_comp)
+		{
 			rohc_comp_list_ipv6_free(header_info->info.v6.ext_comp);
 			free(header_info->info.v6.ext_comp);
 			header_info->info.v6.ext_comp = NULL;

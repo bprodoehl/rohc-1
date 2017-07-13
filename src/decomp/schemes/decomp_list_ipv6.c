@@ -95,8 +95,10 @@ void rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
  */
 void rohc_decomp_list_ipv6_free(struct list_decomp *const decomp)
 {
-	for(unsigned int i = 0; i < ROHC_LIST_MAX_ITEM; i++) {
-		if(decomp->trans_table[i].data != NULL) {
+	for(unsigned int i = 0; i < ROHC_LIST_MAX_ITEM; i++)
+	{
+		if(decomp->trans_table[i].data != NULL)
+		{
 			free(decomp->trans_table[i].data);
 			decomp->trans_table[i].data = NULL;
 		}

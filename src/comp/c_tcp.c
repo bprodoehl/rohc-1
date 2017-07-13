@@ -888,7 +888,8 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 				assert(remain_len >= sizeof(struct ipv4_hdr));
 				proto = ipv4->protocol;
-				if(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS-1) {
+				if(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS-1)
+				{
 					tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1] = malloc(sizeof(ip_context_t));
 					tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1]->opts = NULL;
 				}
