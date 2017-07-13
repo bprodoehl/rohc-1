@@ -98,7 +98,7 @@ struct rohc_list_item
 	/** The length of the item data (in bytes) */
 	size_t length;
 	/** The item data */
-	uint8_t data[ROHC_LIST_ITEM_DATA_MAX];
+	uint8_t *data;
 };
 
 
@@ -137,4 +137,3 @@ int rohc_list_item_update_if_changed(rohc_list_item_cmp cmp_item,
 	__attribute__((warn_unused_result, nonnull(2, 4)));
 
 #endif
-

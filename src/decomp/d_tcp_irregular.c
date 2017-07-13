@@ -113,7 +113,7 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 	    ip_contexts_nr++)
 	{
 		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
+			tcp_context->ip_contexts[ip_contexts_nr];
 		struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_contexts_nr]);
 		const bool is_inner_ip =
 			(ip_contexts_nr == (tcp_context->ip_contexts_nr - 1));
@@ -516,4 +516,3 @@ static inline bool d_tcp_is_ecn_used(const struct d_tcp_context *const tcp_ctxt,
 {
 	return ((bits->ecn_used_bits_nr > 0) ? (!!bits->ecn_used_bits) : tcp_ctxt->ecn_used);
 }
-

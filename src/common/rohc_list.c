@@ -198,10 +198,13 @@ static bool rohc_list_item_update(struct rohc_list_item *const list_item,
 	{
 		return false;
 	}
+	if(list_item->data == NULL)
+	{
+		list_item->data = malloc(ROHC_LIST_ITEM_DATA_MAX*sizeof(uint8_t));
+	}
 	memcpy(list_item->data, item_data, item_len);
 	list_item->length = item_len;
 	list_item->type = item_type;
 
 	return true;
 }
-

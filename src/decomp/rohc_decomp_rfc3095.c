@@ -48,7 +48,6 @@
 #endif
 #include <assert.h>
 
-
 /*
  * Private function prototypes for parsing the static and dynamic parts
  * of the IR and IR-DYN headers
@@ -6352,4 +6351,3 @@ static void reset_extr_bits(const struct rohc_decomp_rfc3095_ctxt *const rfc3095
 	 */
 	bits->is_ts_scaled = true;
 }
-

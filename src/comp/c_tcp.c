@@ -272,7 +272,7 @@ typedef struct
 	} ctxt;
 
 	size_t opts_nr;
-	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
+	ip_option_context_t *opts;
 
 } ip_context_t;
 
@@ -336,7 +336,7 @@ struct sc_tcp_context
 	struct tcp_tmp_variables tmp;
 
 	size_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_TCP_MAX_IP_HDRS];
+	ip_context_t *ip_contexts[ROHC_TCP_MAX_IP_HDRS];
 };
 
 
@@ -834,8 +834,45 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	do
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
+		if(tcp_context->ip_contexts_nr == 0) 
+		{
+			switch(ip->version)
+			{
+				case IPV4:
+				{
+					tcp_context->ip_contexts[0] = malloc(sizeof(ip_context_t));
+					if(tcp_context->ip_contexts[0] == NULL) 
+					{
+						goto free_context;
+					}
+					tcp_context->ip_contexts[0]->opts = NULL;
+					for(unsigned int i = 1; i < ROHC_TCP_MAX_IP_HDRS; i++)
+					{
+						tcp_context->ip_contexts[i] = NULL;
+					}
+				}
+				break;
+				case IPV6:
+				{
+					for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+					{
+						tcp_context->ip_contexts[i] = malloc(sizeof(ip_context_t));
+						if(tcp_context->ip_contexts[i] == NULL)
+						{
+							goto free_context;
+						}
+						tcp_context->ip_contexts[i]->opts = malloc(ROHC_TCP_MAX_IP_EXT_HDRS*sizeof(ip_option_context_t));
+					}
+				}
+				break;
+				default:
+				{
+					goto free_context;
+				}
+			}
+		}
 		ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr]);
+			tcp_context->ip_contexts[tcp_context->ip_contexts_nr];
 
 		/* retrieve IP version */
 		assert(remain_len >= sizeof(struct ip_hdr));
@@ -851,6 +888,11 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 				assert(remain_len >= sizeof(struct ipv4_hdr));
 				proto = ipv4->protocol;
+				if(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS-1)
+				{
+					tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1] = malloc(sizeof(ip_context_t));
+					tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1]->opts = NULL;
+				}
 
 				ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context->ctxt.v4.last_ip_id);
@@ -1072,6 +1114,19 @@ free_wlsb_ip_id:
 free_wlsb_msn:
 	c_destroy_wlsb(tcp_context->msn_wlsb);
 free_context:
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		if(tcp_context->ip_contexts[i] != NULL) 
+		{
+			if(tcp_context->ip_contexts[i]->opts != NULL) 
+			{
+				free(tcp_context->ip_contexts[i]->opts);
+				tcp_context->ip_contexts[i]->opts = NULL;
+			}
+			free(tcp_context->ip_contexts[i]);
+			tcp_context->ip_contexts[i] = NULL;
+		}
+	}
 	free(tcp_context);
 error:
 	return false;
@@ -1097,6 +1152,19 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	c_destroy_wlsb(tcp_context->ip_id_wlsb);
 	c_destroy_wlsb(tcp_context->ttl_hopl_wlsb);
 	c_destroy_wlsb(tcp_context->msn_wlsb);
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		if(tcp_context->ip_contexts[i] != NULL) 
+		{
+			if(tcp_context->ip_contexts[i]->opts != NULL) 
+			{
+				free(tcp_context->ip_contexts[i]->opts);
+				tcp_context->ip_contexts[i]->opts = NULL;
+			}
+			free(tcp_context->ip_contexts[i]);
+			tcp_context->ip_contexts[i] = NULL;
+		}
+	}
 	free(tcp_context);
 }
 
@@ -1521,7 +1589,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	    ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		const ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_pos];
 		size_t ip_ext_pos;
 
 		/* retrieve IP version */
@@ -1758,10 +1826,10 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "  update context of IP header #%zu:",
 			                ip_hdr_pos + 1);
-			tcp_context->ip_contexts[ip_hdr_pos].opts_nr =
+			tcp_context->ip_contexts[ip_hdr_pos]->opts_nr =
 				tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
 			rohc_comp_debug(context, "    %zu extension headers",
-			                tcp_context->ip_contexts[ip_hdr_pos].opts_nr);
+			                tcp_context->ip_contexts[ip_hdr_pos]->opts_nr);
 		}
 	}
 
@@ -2109,7 +2177,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_pos];
 		const bool is_inner = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 		size_t ip_ext_pos;
 
@@ -2732,7 +2800,7 @@ static int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_pos];
 		const bool is_innermost = !!(ip_hdr_pos == (tcp_context->ip_contexts_nr - 1));
 
 		/* retrieve IP version */
@@ -3439,7 +3507,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_pos];
 		uint8_t protocol;
 
 		/* retrieve IP version */
@@ -5141,7 +5209,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	do
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdrs_nr]);
+		ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdrs_nr];
 
 		assert(remain_len >= sizeof(struct ip_hdr));
 		rohc_comp_debug(context, "found IPv%d header #%zu",
@@ -5623,7 +5691,7 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		const ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_pos];
 		const bool is_innermost = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 		uint8_t ttl_hopl;
 		size_t ip_ext_pos;
@@ -7281,4 +7349,3 @@ const struct rohc_comp_profile c_tcp_profile =
 	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = c_tcp_feedback,
 };
-

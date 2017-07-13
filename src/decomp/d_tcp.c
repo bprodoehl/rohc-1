@@ -54,7 +54,6 @@
 #endif
 #include <stdint.h>
 
-
 /*
  * Private function prototypes.
  */
@@ -503,6 +502,13 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 		                 "of one of the TCP decompression context");
 		goto free_extr_bits;
 	}
+	
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		tcp_context->ip_contexts[i] = NULL;
+		((struct rohc_tcp_extr_bits*)(volat_ctxt->extr_bits))->ip[i].opts = NULL;
+		((struct rohc_tcp_decoded_values*)(volat_ctxt->decoded_values))->ip[i].opts = NULL;
+	}
 
 	return true;
 
@@ -571,9 +577,37 @@ static void d_tcp_destroy(struct d_tcp_context *const tcp_context,
 	rohc_lsb_free(tcp_context->msn_lsb_ctxt);
 
 	/* free the TCP decompression context itself */
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		if(tcp_context->ip_contexts[i] != NULL) 
+		{
+			if(tcp_context->ip_contexts[i]->opts != NULL) 
+			{
+				free(tcp_context->ip_contexts[i]->opts);
+				tcp_context->ip_contexts[i]->opts = NULL;
+			}
+			free(tcp_context->ip_contexts[i]);
+			tcp_context->ip_contexts[i] = NULL;
+		}
+	}
 	free(tcp_context);
 
 	/* free the volatile part of the decompression context */
+	struct rohc_tcp_decoded_values *decoded = (struct rohc_tcp_decoded_values *)volat_ctxt->decoded_values;
+	struct rohc_tcp_extr_bits *extrab = (struct rohc_tcp_extr_bits *)volat_ctxt->extr_bits;
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		if(decoded->ip[i].opts != NULL) 
+		{
+			free(decoded->ip[i].opts);
+			decoded->ip[i].opts = NULL;
+		}
+		if(extrab->ip[i].opts != NULL) 
+		{
+			free(extrab->ip[i].opts);
+			extrab->ip[i].opts = NULL;
+		}
+	}
 	free(volat_ctxt->decoded_values);
 	free(volat_ctxt->extr_bits);
 }
@@ -633,7 +667,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 			}
 			assert(tcp_context->ip_contexts_nr > 0);
 			innermost_hdr_ctxt =
-				&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
+				tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1];
 			innermost_ip_id_behavior = innermost_hdr_ctxt->ctxt.vx.ip_id_behavior;
 			is_ip_id_seq = (innermost_ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP);
 			rohc_decomp_debug(context, "IPv%u header #%zu is the innermost IP header",
@@ -1030,7 +1064,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	                  large_cid_len, rohc_length);
 
 	assert(tcp_context->ip_contexts_nr > 0);
-	ip_inner_context = &(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
+	ip_inner_context = tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1];
 	assert(bits->ip_nr > 0);
 	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
 
@@ -2245,7 +2279,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 {
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const ip_context_t *const innermost_ip_ctxt =
-		&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
+		tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1];
 	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
 		&(bits->ip[bits->ip_nr - 1]);
 
@@ -2491,28 +2525,42 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	size_t i;
 
 	/* set every bits and sizes to 0 */
+	ip_option_context_t *optptrs[ROHC_TCP_MAX_IP_HDRS];
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		optptrs[i] = bits->ip[i].opts;
+	}
 	memset(bits, 0, sizeof(struct rohc_tcp_extr_bits));
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		bits->ip[i].opts = optptrs[i];
+	}
 
 	/* if context handled at least one packet, init the list of IP headers */
 	if(context->num_recv_packets >= 1)
 	{
 		for(i = 0; i < tcp_context->ip_contexts_nr; i++)
 		{
-			bits->ip[i].version = tcp_context->ip_contexts[i].version;
-			bits->ip[i].proto = tcp_context->ip_contexts[i].ctxt.vx.next_header;
+			bits->ip[i].version = tcp_context->ip_contexts[i]->version;
+			bits->ip[i].proto = tcp_context->ip_contexts[i]->ctxt.vx.next_header;
 			bits->ip[i].proto_nr = 8;
 			if(bits->ip[i].version == IPV6)
 			{
 				size_t j;
 
-				bits->ip[i].opts_nr = tcp_context->ip_contexts[i].opts_nr;
-				bits->ip[i].opts_len = tcp_context->ip_contexts[i].opts_len;
+				bits->ip[i].opts_nr = tcp_context->ip_contexts[i]->opts_nr;
+				bits->ip[i].opts_len = tcp_context->ip_contexts[i]->opts_len;
+				if(bits->ip[i].opts_nr > 0 && bits->ip[i].opts == NULL)
+				{
+					bits->ip[i].opts = malloc(ROHC_TCP_MAX_IP_EXT_HDRS*sizeof(ip_option_context_t));
+					
+				}
 				for(j = 0; j < bits->ip[i].opts_nr; j++)
 				{
-					bits->ip[i].opts[j].len = tcp_context->ip_contexts[i].opts[j].len;
-					bits->ip[i].opts[j].proto = tcp_context->ip_contexts[i].opts[j].proto;
+					bits->ip[i].opts[j].len = tcp_context->ip_contexts[i]->opts[j].len;
+					bits->ip[i].opts[j].proto = tcp_context->ip_contexts[i]->opts[j].proto;
 					bits->ip[i].opts[j].nh_proto =
-						tcp_context->ip_contexts[i].opts[j].nh_proto;
+						tcp_context->ip_contexts[i]->opts[j].nh_proto;
 				}
 			}
 		}
@@ -2632,7 +2680,7 @@ static bool d_tcp_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const conte
 	for(ip_hdr_nr = 0; ip_hdr_nr < bits->ip_nr; ip_hdr_nr++)
 	{
 		const struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_hdr_nr]);
-		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
+		const ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_nr];
 		struct rohc_tcp_decoded_ip_values *const ip_decoded = &(decoded->ip[ip_hdr_nr]);
 
 		rohc_decomp_debug(context, "decode fields of IP header #%zu", ip_hdr_nr + 1);
@@ -2905,7 +2953,10 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	if(ip_bits->version == IPV6)
 	{
 		size_t ext_pos;
-
+		if(ip_decoded->opts_nr > 0 && ip_decoded->opts == NULL)
+		{
+			ip_decoded->opts = malloc(ROHC_TCP_MAX_IP_EXT_HDRS*sizeof(ip_option_context_t));
+		}
 		for(ext_pos = 0; ext_pos < ip_decoded->opts_nr; ext_pos++)
 		{
 			switch(ip_bits->opts[ext_pos].proto)
@@ -4149,7 +4200,12 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	{
 		const struct rohc_tcp_decoded_ip_values *const ip_decoded =
 			&(decoded->ip[ip_hdr_nr]);
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
+		if(tcp_context->ip_contexts[ip_hdr_nr] == NULL)
+		{
+			tcp_context->ip_contexts[ip_hdr_nr] = malloc(sizeof(ip_context_t));
+			tcp_context->ip_contexts[ip_hdr_nr]->opts = NULL;
+		}
+		ip_context_t *const ip_context = tcp_context->ip_contexts[ip_hdr_nr];
 		const bool is_inner = !!(ip_hdr_nr == (decoded->ip_nr - 1));
 
 		rohc_decomp_debug(context, "update context for IPv%u header #%zu",
@@ -4217,6 +4273,10 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			/* remember the extension headers */
 			ip_context->opts_nr = ip_decoded->opts_nr;
 			ip_context->opts_len = ip_decoded->opts_len;
+			if(ip_context->opts == NULL)
+			{
+				ip_context->opts = malloc(ROHC_TCP_MAX_IP_EXT_HDRS*sizeof(ip_option_context_t));
+			}
 			for(ext_pos = 0; ext_pos < ip_context->opts_nr; ext_pos++)
 			{
 				const size_t ext_len = ip_decoded->opts[ext_pos].len;
@@ -4367,4 +4427,3 @@ const struct rohc_decomp_profile d_tcp_profile =
 	.attempt_repair  = (rohc_decomp_attempt_repair_t) d_tcp_attempt_repair,
 	.get_sn          = d_tcp_get_msn
 };
-
