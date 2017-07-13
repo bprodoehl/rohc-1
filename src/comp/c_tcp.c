@@ -834,43 +834,43 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	do
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-        if(tcp_context->ip_contexts_nr == 0) 
-        {
-            switch(ip->version)
-    		{
-                case IPV4:
-    			{
-                    tcp_context->ip_contexts[0] = malloc(sizeof(ip_context_t));
-                    if(tcp_context->ip_contexts[0] == NULL) 
-                    {
-                        goto free_context;
-                    }
-                    tcp_context->ip_contexts[0]->opts = NULL;
-                    for(unsigned int i = 1; i < ROHC_TCP_MAX_IP_HDRS; i++)
-                    {
-                        tcp_context->ip_contexts[i] = NULL;
-                    }
-                }
-                break;
-                case IPV6:
-                {
-                    for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
-                    {
-                        tcp_context->ip_contexts[i] = malloc(sizeof(ip_context_t));
-                        if(tcp_context->ip_contexts[i] == NULL)
-                        {
-                            goto free_context;
-                        }
-                        tcp_context->ip_contexts[i]->opts = malloc(ROHC_TCP_MAX_IP_EXT_HDRS*sizeof(ip_option_context_t));
-                    }
-                }
-                break;
-                default:
-                {
-    				goto free_context;
-    			}
-            }
-        }
+		if(tcp_context->ip_contexts_nr == 0) 
+		{
+			switch(ip->version)
+			{
+				case IPV4:
+				{
+					tcp_context->ip_contexts[0] = malloc(sizeof(ip_context_t));
+					if(tcp_context->ip_contexts[0] == NULL) 
+					{
+						goto free_context;
+					}
+					tcp_context->ip_contexts[0]->opts = NULL;
+					for(unsigned int i = 1; i < ROHC_TCP_MAX_IP_HDRS; i++)
+					{
+						tcp_context->ip_contexts[i] = NULL;
+					}
+				}
+				break;
+				case IPV6:
+				{
+					for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+					{
+						tcp_context->ip_contexts[i] = malloc(sizeof(ip_context_t));
+						if(tcp_context->ip_contexts[i] == NULL)
+						{
+							goto free_context;
+						}
+						tcp_context->ip_contexts[i]->opts = malloc(ROHC_TCP_MAX_IP_EXT_HDRS*sizeof(ip_option_context_t));
+					}
+				}
+				break;
+				default:
+				{
+					goto free_context;
+				}
+			}
+		}
 		ip_context_t *const ip_context =
 			tcp_context->ip_contexts[tcp_context->ip_contexts_nr];
 
@@ -888,10 +888,10 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 				assert(remain_len >= sizeof(struct ipv4_hdr));
 				proto = ipv4->protocol;
-                if(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS-1) {
-                    tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1] = malloc(sizeof(ip_context_t));
-                    tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1]->opts = NULL;
-                }
+				if(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS-1) {
+					tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1] = malloc(sizeof(ip_context_t));
+					tcp_context->ip_contexts[tcp_context->ip_contexts_nr+1]->opts = NULL;
+				}
 
 				ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context->ctxt.v4.last_ip_id);
@@ -1113,19 +1113,19 @@ free_wlsb_ip_id:
 free_wlsb_msn:
 	c_destroy_wlsb(tcp_context->msn_wlsb);
 free_context:
-    for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
-    {
-        if(tcp_context->ip_contexts[i] != NULL) 
-        {
-            if(tcp_context->ip_contexts[i]->opts != NULL) 
-            {
-                free(tcp_context->ip_contexts[i]->opts);
-                tcp_context->ip_contexts[i]->opts = NULL;
-            }
-            free(tcp_context->ip_contexts[i]);
-            tcp_context->ip_contexts[i] = NULL;
-        }
-    }
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		if(tcp_context->ip_contexts[i] != NULL) 
+		{
+			if(tcp_context->ip_contexts[i]->opts != NULL) 
+			{
+				free(tcp_context->ip_contexts[i]->opts);
+				tcp_context->ip_contexts[i]->opts = NULL;
+			}
+			free(tcp_context->ip_contexts[i]);
+			tcp_context->ip_contexts[i] = NULL;
+		}
+	}
 	free(tcp_context);
 error:
 	return false;
@@ -1151,19 +1151,19 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	c_destroy_wlsb(tcp_context->ip_id_wlsb);
 	c_destroy_wlsb(tcp_context->ttl_hopl_wlsb);
 	c_destroy_wlsb(tcp_context->msn_wlsb);
-    for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
-    {
-        if(tcp_context->ip_contexts[i] != NULL) 
-        {
-            if(tcp_context->ip_contexts[i]->opts != NULL) 
-            {
-                free(tcp_context->ip_contexts[i]->opts);
-                tcp_context->ip_contexts[i]->opts = NULL;
-            }
-            free(tcp_context->ip_contexts[i]);
-            tcp_context->ip_contexts[i] = NULL;
-        }
-    }
+	for(unsigned int i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++) 
+	{
+		if(tcp_context->ip_contexts[i] != NULL) 
+		{
+			if(tcp_context->ip_contexts[i]->opts != NULL) 
+			{
+				free(tcp_context->ip_contexts[i]->opts);
+				tcp_context->ip_contexts[i]->opts = NULL;
+			}
+			free(tcp_context->ip_contexts[i]);
+			tcp_context->ip_contexts[i] = NULL;
+		}
+	}
 	free(tcp_context);
 }
 
